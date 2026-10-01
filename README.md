@@ -1,23 +1,66 @@
 # amazon-scraper-skill
 
-> Agent skill for scraping Amazon product pages without paid APIs — battle-tested selectors and anti-bot findings across UK/DE/US/JP: BSR category vs subcategory, multilingual star ratings, degraded-page detection, Buy Box & delivery-location gating, soft-block 404s.
+> Batch-scrape Amazon product data by ASIN, at scale — no paid API.
 
-亚马逊商品页直连抓取 Agent Skill：不依赖付费 API，沉淀英/德/美/日四站实测结论 —— BSR 大类/小类判别、星级多语言解析、反爬降级页识别、Buy Box 与配送地陷阱、软封锁伪装 404。
+一句话：**批量抓 ASIN 的商品数据，用来做竞品监控。**
 
-## 内容
+给它一批 ASIN，它把每个 ASIN 的标题、品牌、价格、折扣、Coupon/Deal、BSR 排名、星级、评论数、在售状态一次性抓回来，落成表格，每天再跑一次就能看出谁降价、谁掉排名。
+
+---
+
+## 抓什么
+
+一次跑几十到上百个 ASIN，每个 ASIN 输出：
+
+| 字段 | 说明 |
+|---|---|
+| 标题 / 品牌 | 品牌走三档兜底，都没有就输出 `—` |
+| 现价 | 按站点货币：£ / € / $ / ￥ |
+| RRP 划线价 | `Was:` / `RRP:` / `過去価格` / `UVP:` |
+| 折扣力度 | 如 `-27%` |
+| Coupon / Deal | 有没有券、券的类型；是不是 Lightning Deal / Deal of the Day |
+| 券后价 | 百分比券、金额券各自换算 |
+| BSR 大类 + 小类 | 排名数字 + 类目名，两个层级分开 |
+| 星级 / 评论总数 | 含星级分布（5★→1★） |
+| 商品状态 | 在售 / 断货 / 价格受限 / 已下架 / 抓取失败 |
+
+## 覆盖站点
+
+**英国 / 德国 / 美国 / 日本** —— 按站点强制货币，**无需登录账号**。
+
+## 拿来干什么
+
+- **竞品监控**：每天跑同一批 ASIN，看谁调价、谁上券、谁掉 BSR
+- **日度追踪**：存历史快照，按价格 / BSR 阈值判「有变化」
+- **报表**：自定义列导出 Excel
+- **告警**：变化走飞书 Webhook 推送（可设「仅在变化时推」，避免每天刷屏）
+
+## 难点在哪
+
+难点不在「字段找不到」，而在亚马逊的**三类静默失败**——它们不报错，只是悄悄给你空数据：
+
+1. **降级页**：反爬判定可疑时不返回 403，而是返回 200 + 精简页面，所有字段变空，还容易被误判成「在售」
+2. **配送地没切**：亚马逊按 IP 判定收货地，卖家不发货到那里就不渲染 Buy Box，价格全空 —— 极易误判成「断货」
+3. **软封锁伪装 404**：真返回 404，但正文里带 `api-services-support@amazon.com`，这是被拦了，**不是下架**
+
+以及各站点的本地化差异：德国写 `Nr. 2.182`、英国写 `1,234`、日本站的星级是 `5つ星のうち4.2`（数字在后面）。
+
+---
+
+## 章节索引
 
 | 章节 | 内容 |
 |---|---|
 | §0 | 请求层：`curl_cffi` impersonate、强制站点货币、UA 与 TLS 指纹一致性 |
-| §0.05 | 反爬「降级页」识别（返回 200 的精简页，判据 `productTitle`） |
+| §0.05 | 反爬「降级页」识别（判据：`productTitle` 在不在） |
 | §0.1 | 配送地址切换：CSRF token 取法、回读确认、默认邮编 |
-| §0.2 | 软封锁伪装成 404（正文含 `api-services-support@amazon.com`） |
+| §0.2 | 软封锁伪装成 404 |
 | §1 | 标题与品牌（三档兜底） |
 | §2 | 价格体系：价格容器定位、现价、RRP、折扣、多语言数字格式 |
-| §3 | Coupon 与 Deal（无需登录，排除「多买促销」） |
+| §3 | Coupon 与 Deal（无需登录；排除「多买促销」） |
 | §4 | BSR 大类 / 小类：语义化定位、多语言版式、四级优先级判定 |
-| §5 | 星级与评论数（日站为倒序格式） |
-| §6 | 商品状态判定顺序（断货 / 价格受限 / 抓取失败 / 已下架） |
+| §5 | 星级与评论数 |
+| §6 | 商品状态判定顺序 |
 | §7 | 排错心法：空字段先怀疑抓取侧，再怀疑商品侧 |
 | §8 | 打包成 macOS App 的坑（PyInstaller / DMG / zip） |
 
