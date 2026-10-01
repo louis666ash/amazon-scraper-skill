@@ -2,7 +2,7 @@
 
 > Batch-scrape Amazon product data by ASIN, at scale — no paid API.
 
-一句话：**批量抓 ASIN 的商品数据，用来做竞品监控。**
+**批量抓 ASIN 的商品数据，用来做竞品监控。**
 
 给它一批 ASIN，它把每个 ASIN 的标题、品牌、价格、折扣、Coupon/Deal、BSR 排名、星级、评论数、在售状态一次性抓回来，落成表格，每天再跑一次就能看出谁降价、谁掉排名。
 
